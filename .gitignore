@@ -1,0 +1,12 @@
+# ── 진단 결과물(실 호스트 IP·설정 포함 — 비공개) ──
+result_*/
+*_result/
+result_*.zip
+*_raw_*.csv
+*_report_*.txt
+
+# ── 캐시 / 임시 ──
+__pycache__/
+*.pyc
+.DS_Store
+*.log
