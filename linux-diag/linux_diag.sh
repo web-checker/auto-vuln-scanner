@@ -41,12 +41,13 @@ mkdir -p "$OUTPUT_DIR" 2>/dev/null || { echo "[ERROR] 출력 디렉터리 생성
 RAW_CSV="${OUTPUT_DIR}/linux_diag_raw_${LABEL}_${TS_FILE}.csv"
 REPORT="${OUTPUT_DIR}/linux_diag_report_${LABEL}_${TS_FILE}.txt"
 
-F_CODE=(); F_SEV=(); F_NAME=(); F_CAT=(); F_FILE=(); F_RAW=(); F_RESULT=(); F_SUMMARY=(); F_STD=()
+F_CODE=(); F_SEV=(); F_NAME=(); F_CAT=(); F_FILE=(); F_RAW=(); F_RESULT=(); F_SUMMARY=(); F_STD=(); F_ACTION=()
 CNT_PASS=0; CNT_VULN=0; CNT_NA=0
 
 # ── 항목명/중요도/분류 ─────────────────────────────────────
-declare -A NAME SEV
+declare -A NAME SEV ACTION
 set_meta(){ NAME[$1]="$3"; SEV[$1]="$2"; }
+set_action(){ ACTION[$1]="$2"; }
 set_meta U-01 상 "root 계정 원격 접속 제한";            set_meta U-02 상 "비밀번호 관리정책 설정"
 set_meta U-03 상 "계정 잠금 임계값 설정";               set_meta U-04 상 "비밀번호 파일 보호"
 set_meta U-05 상 "root 이외의 UID '0' 금지";            set_meta U-06 하 "사용자 계정 su 기능 제한"
@@ -82,6 +83,76 @@ set_meta U-62 하 "로그인 시 경고 메시지 설정";          set_meta U-6
 set_meta U-64 상 "주기적 보안 패치 및 벤더 권고사항 적용"
 set_meta U-65 중 "NTP 및 시각 동기화 설정";             set_meta U-66 중 "정책에 따른 시스템 로깅 설정"
 set_meta U-67 중 "로그 디렉터리 및 파일 권한 설정"
+
+while IFS=$'\t' read -r code action; do ACTION[$code]="$action"; done <<'EOF'
+U-01	원격 접속 시 root 계정으로 접속할 수 없도록 파일 내용 설정
+U-02	root 계정을 포함한 사용자 계정의 비밀번호를 영문, 숫자, 특수문자를 포함하여 최소 8자리 이상 및 최소 사용 기간 1일, 최대 사용 기간 90일, 최근 비밀번호 기억 4회 이상으로 설정
+U-03	계정 잠금 임계값을 10회 이하로 설정
+U-04	비밀번호 암호화 저장·관리 설정
+U-05	ŸUID가 0으로 설정된 계정을 0 이외의 중복되지 않은 UID로 변경 또는 불필요한 계정인 경우 제거하도록 설정Ÿ(사용 중인 계정인 경우 명령어를 통한 조치가 적용되지 않을 수 있으므로 /etc/passwd 파일을 통해 변경)
+U-06	PAM 모듈 설정 또는 su 명령어 허용 그룹 생성 후 su 명령어 일반 사용자 권한 제거하도록 설정
+U-07	시스템에 존재하는 계정 확인 후 불필요한 계정 제거하도록 설정
+U-08	관리자 그룹에 등록된 계정 확인 후 불필요한 계정 제거하도록 설정
+U-09	불필요한 그룹이 존재하는 경우 관리자와 검토하여 제거하도록 설정※/etc/group 파일과 /etc/passwd 파일을 비교하여 점검하기를 권고함
+U-10	동일한 UID를 가진 사용자 계정의 UID를 중복되지 않도록 변경하도록 설정
+U-11	로그인이 필요하지 않은 계정에 대해 /bin/false(/sbin/nologin) 쉘 부여 설정
+U-12	600초(10분) 동안 입력이 없는 경우 접속된 Session을 끊도록 설정
+U-13	SHA-2 이상의 안전한 비밀번호 암호화 알고리즘 적용 설정
+U-14	root 계정의 환경설정 파일(/.profile, /.bashrc 등)과 시스템 환경설정 파일(/etc/profile 등)에 설정된 PATH 환경변수에서 현재 디렉터리를 나타내는 “.”을 PATH 환경변수의 마지막으로 이동하도록 설정※/etc/profile 파일, root 계정, 일반 사용자 계정의 환경설정 파일을 순차적으로 검색하여 확인
+U-15	소유자가 존재하지 않는 파일 및 디렉터리 제거 또는 소유자 변경 설정
+U-16	/etc/passwd 파일 소유자 및 권한 변경 설정
+U-17	시스템 시작 스크립트 파일 소유자 및 권한 변경 설정
+U-18	/etc/shadow 파일 소유자 및 권한 변경 설정
+U-19	/etc/hosts 파일 소유자 및 권한 변경 설정
+U-20	/etc/(x)inetd.conf 파일 소유자 및 권한 변경 설정
+U-21	/etc/(r)syslog.conf 파일 소유자 및 권한 변경 설정
+U-22	/etc/ services 파일 소유자 및 권한 변경 설정
+U-23	Ÿ불필요한 SUID, SGID 권한 또는 해당 파일 제거하도록 설정Ÿ애플리케이션에서 생성한 파일이나 사용자가 임의로 생성한 파일 등 의심스럽거나 특이한 파일에 SUID 권한이 부여된 경우 제거하도록 설정
+U-24	환경변수 파일의 일반 사용자 쓰기 권한 제거하도록 설정
+U-25	world writable 파일 존재 여부를 확인하고 불필요한 경우 제거하도록 설정
+U-26	major, minor number를 가지지 않는 device 파일 제거하도록 설정
+U-27	/etc/hosts.equiv, $HOME/.rhosts 파일 소유자 및 권한 변경, 허용 호스트 및 계정 등록 설정
+U-28	OS에 기본으로 제공하는 방화벽 애플리케이션이나 TCP Wrapper와 같은 호스트별 서비스 제한 애플리케이션을 사용하여 접근 허용 IP 등록 설정
+U-29	/etc/hosts.lpd 파일 제거 또는 /etc/hosts.lpd 파일 소유자 및 권한 변경 설정
+U-30	설정 파일에 UMASK 값을 022로 설정
+U-31	사용자별 홈 디렉토리 소유주를 해당 계정으로 변경하고, 타 사용자의 쓰기 권한 제거하도록 설정(/etc/passwd 파일에서 홈 디렉토리 확인, 사용자 홈 디렉토리 외 개별적으로 만들어 사용하는 사용자 디렉토리 존재 여부 확인하여 점검)
+U-32	홈 디렉토리가 존재하지 않는 계정에 홈 디렉토리 설정 또는 계정 제거하도록 설정
+U-33	ls -al 명령어로 숨겨진 파일 존재 파악 후 불법적이거나 의심스러운 파일을 제거하도록 설정
+U-34	Finger 서비스 비활성화 설정
+U-35	공유 서비스의 익명 접근 제한 설정
+U-36	불필요한 r 계열 서비스 중지 및 비활성화 설정※NET Backup 등 특별한 용도로 사용하지 않는다면 shell(514), login(513), exec(512) 서비스 중지※rlogin, rsh, rexec 서비스는 backup, 클러스터링 등의 용도로 종종 사용되고 있으므로 해당 서비스 사용 유무를 확인하여 미사용시 서비스 중지※/etc/hosts.equiv 또는 $HOME/.rhosts 파일을 통해 해당 서비스 사용 여부 확인 (파일이 존재하지 않거나 해당 파일 내에 설정이 없다면 사용하지 않는 것으로 간주)
+U-37	crontab 및 at 명령어 파일 권한 750 이하, cron 및 at 관련 파일 소유자 및 파일 권한 640 이하 설정
+U-38	echo, discard, daytime, chargen, ntp, dns, snmp 등의 서비스 비활성화 설정
+U-39	NFS 서비스를 사용하지 않는 경우 서비스 중지 및 비활성화 설정※로컬 서버에 마운트 되어 있는 디렉터리 제거 및 공유 디렉터리 제거 후 서비스 중지 가능
+U-40	ŸNFS 서비스를 사용하지 않는 경우 서비스 중지 및 비활성화 설정Ÿ불가피하게 사용 시 접근 통제 설정 및 NFS 설정 파일 접근 권한 644 설정
+U-41	automountd 서비스 비활성화 설정
+U-42	불필요한 RPC 서비스 중지 및 비활성화 설정
+U-43	NIS 관련 서비스 비활성화 설정
+U-44	불필요한 tftp, talk, ntalk 서비스 비활성화 설정
+U-45	Ÿ메일 서비스를 사용하지 않는 경우 서비스 중지 및 비활성화 설정Ÿ메일 서비스 사용 시 패치 관리 정책을 수립하여 주기적으로 패치 적용 설정
+U-46	Ÿ메일 서비스를 사용하지 않는 경우 서비스 중지 및 비활성화 설정Ÿ메일 서비스 사용 시 메일 서비스의 q 옵션 제한 설정
+U-47	Ÿ메일 서비스를 사용하지 않는 경우 서비스 중지 및 비활성화 설정Ÿ메일 서비스 사용 시 릴레이 방지 설정 또는 릴레이 대상 접근 제어 설정
+U-48	Ÿ메일 서비스를 사용하지 않는 경우 서비스 중지 및 비활성화 설정Ÿ메일 서비스 사용 시 메일 서비스 설정 파일에 noexpn, novrfy 또는 goaway 옵션 추가 설정
+U-49	ŸDNS 서비스를 사용하지 않는 경우 서비스 중지 및 비활성화 설정ŸDNS 서비스 사용 시 패치 관리 정책 수립 및 주기적으로 패치 적용 설정※DNS 서비스의 경우 대부분의 버전에서 취약점이 보고되고 있으므로 OS 관리자, 서비스 개발자가 패치 적용에 따른 서비스 영향 정도를 정확히 파악하여 주기적인 패치 적용 정책 수리 후 적용
+U-50	ŸDNS 서비스를 사용하지 않는 경우 서비스 중지 및 비활성화 설정ŸDNS 서비스 사용 시 DNS Zone Transfer를 허가된 사용자에게만 전송 허용하도록 설정
+U-51	ŸDNS 서비스를 사용하지 않는 경우 서비스 중지 및 비활성화 설정ŸDNS 서비스 사용 시 일반적으로 동적 업데이트 기능이 필요 없으나 확인 필요함
+U-52	Telnet, FTP 등 안전하지 않은 서비스 사용을 중지하고 SSH 설치 및 사용하도록 설정
+U-53	ŸFTP 서비스를 사용하지 않는 경우 서비스 중지 및 비활성화 설정ŸFTP 서비스 사용 시 FTP 설정 파일을 통해 접속 배너 설정※접속 배너에 서비스 이름이나 버전 정보를 노출하지 않는 것을 권고
+U-54	암호화되지 않은 FTP 서비스 중지 및 비활성화 설정
+U-55	ŸFTP 서비스를 사용하지 않는 경우 서비스 중지 및 비활성화 설정ŸFTP 서비스 사용 시 FTP 계정에 /bin/false 쉘 부여 설정
+U-56	ŸFTP 서비스를 사용하지 않는 경우 서비스 중지 및 비활성화 설정ŸFTP 서비스 사용 시 접근 제어 설정
+U-57	ŸFTP 서비스를 사용하지 않는 경우 서비스 중지 및 비활성화 설정ŸFTP 서비스 사용 시 root 계정으로 직접 접속할 수 없도록 설정
+U-58	SNMP 서비스를 사용하지 않는 경우 서비스 중지 및 비활성화 설정
+U-59	ŸSNMP 서비스를 사용하지 않는 경우 서비스 중지 및 비활성화 설정ŸSNMP 서비스 사용 시 SNMP 버전을 v3 이상으로 적용하도록 설정
+U-60	ŸSNMP 서비스를 사용하지 않는 경우 서비스 중지 및 비활성화 설정ŸSNMP 서비스 사용 시 SNMP Community String 기본값인 “public”, “private”이 아닌 영문자, 숫자 포함 10자리 이상 또는 영문자, 숫자, 특수문자 포함 8자리 이상으로 설정
+U-61	ŸSNMP 서비스를 사용하지 않는 경우 서비스 중지 및 비활성화 설정ŸSNMP 서비스 사용 시 SNMP 접근 제어 설정하도록 설정
+U-62	Telnet, FTP, SMTP, DNS 서비스를 사용하는 경우 설정 파일을 통해 로그온 시 경고 메시지 설정
+U-63	/etc/sudoers 파일 소유자 및 권한 변경 설정
+U-64	OS 관리자, 서비스 개발자가 패치 적용에 따른 서비스 영향 정도를 파악하여 OS 관리자 및 벤더에서 적용하도록 설정※OS 패치의 경우 지속해서 취약점이 발표되고 있으므로 O/S 관리자, 서비스 개발자가 패치 적용에 따른 서비스 영향 정도를 정확히 파악하여 주기적인 패치 적용 정책을 수립하여 적용해야 함
+U-65	NTP 설정 및 동기화 주기 설정
+U-66	로그 기록 정책을 수립하고, 정책에 따라 (r)syslog.conf 파일을 설정
+U-67	디렉터리 내 로그 파일 소유자 및 권한 변경 설정
+EOF
 
 # ── KISA 판단기준(원문) U-01~U-67 ── (01_Unix_서버.pdf 양호/취약 원문 그대로, 판단기준 필드용)
 declare -A STD_PASS STD_VULN
@@ -261,20 +332,23 @@ truncate8(){
     }'
 }
 # 화면/보고서(TXT) 출력 블록 — 점검요약은 점검내용을 8줄까지만
-# emit_screen CODE SEV NAME STD RESULT RAW FILE
+# emit_screen CODE SEV NAME STD RESULT RAW FILE ACTION
 emit_screen(){
+  local action="${8:-}"
   printf '[%s (%s) %s]\n' "$1" "$2" "$3"
   printf '점검 결과    : %s\n' "$5"
   printf '점검 파일 명 : %s\n' "$7"
   printf '점검 요약    :\n'
   if [ -n "$6" ]; then truncate8 "$6" | sed 's/^/    /'; else printf '    (없음)\n'; fi
   printf '판단 기준    :\n'; printf '%s\n' "$4" | sed 's/^/    /'
+  printf '조치 방법    :\n'
+  if [ -n "$action" ]; then printf '%s\n' "$action" | sed 's/^/    /'; else printf '    (없음)\n'; fi
   printf -- '----------------------------------------------------------------\n'
 }
 # rec CODE RESULT FILE RAW SUMMARY
 rec(){
   local code="$1" result="$2" file="$3" raw="$4" summary="$5"
-  local sev="${SEV[$code]}" name="${NAME[$code]}" cat std; cat="$(cat_of "$code")"
+  local sev="${SEV[$code]}" name="${NAME[$code]}" cat std action; cat="$(cat_of "$code")"; action="${ACTION[$code]:-}"
   case "$result" in
     "$R_PASS") CNT_PASS=$((CNT_PASS+1)) ;;
     "$R_VULN") CNT_VULN=$((CNT_VULN+1)) ;;
@@ -289,8 +363,8 @@ rec(){
   std="양호 : ${STD_PASS[$code]:-(기준 미정의)}"$'\n'"취약 : ${STD_VULN[$code]:-(기준 미정의)}"
   local i=${#F_CODE[@]}
   F_CODE[i]="$code"; F_SEV[i]="$sev"; F_NAME[i]="$name"; F_CAT[i]="$cat"
-  F_FILE[i]="$file"; F_RAW[i]="$raw"; F_RESULT[i]="$result"; F_SUMMARY[i]="$summary"; F_STD[i]="$std"
-  emit_screen "$code" "$sev" "$name" "$std" "$result" "$raw" "$file"
+  F_FILE[i]="$file"; F_RAW[i]="$raw"; F_RESULT[i]="$result"; F_SUMMARY[i]="$summary"; F_STD[i]="$std"; F_ACTION[i]="$action"
+  emit_screen "$code" "$sev" "$name" "$std" "$result" "$raw" "$file" "$action"
 }
 
 show_preinfo(){
@@ -315,8 +389,8 @@ diag_u01(){ local raw="" v="" pr tel=""
   # securetty 파일 점검이 아님: 최신 OS(우분투 20.04↑/AL2023 등)는 Telnet이 기본 비활성이며,
   # root 원격 접속 제한은 SSH(PermitRootLogin)로 판단한다.
   pr="$(grep -hiE '^[[:space:]]*PermitRootLogin' "$SSHD_CONFIG" "$SSHD_CONFIG".d/* 2>/dev/null | grep -vE '^\s*#' | tail -1)"
-  svc_running telnet telnetd "telnet.socket" && tel="활성" || tel="비활성"
-  raw="sshd_config: ${pr:-(PermitRootLogin 설정 라인 없음)}"$'\n'"Telnet 서비스: ${tel}"
+  svc_running telnet telnetd "telnet.socket" && tel="활성" || tel="비활성(미설치/미사용)"
+  raw="sshd_config: ${pr:-(PermitRootLogin 미설정 → 기본 prohibit-password)}"$'\n'"Telnet 서비스: ${tel}"
   if has_cmd sshd || [ -f "$SSHD_CONFIG" ]; then
     if printf '%s' "$pr" | grep -qiE 'PermitRootLogin[[:space:]]+(no|prohibit-password|forced-commands-only)'; then v="$R_PASS"
     elif [ -z "$pr" ]; then v="$R_PASS"   # 기본값 prohibit-password
@@ -365,7 +439,7 @@ diag_u04(){ local nox raw
   # passwd 2번째 필드가 x/*/! 가 아닌(암호 직접 저장 가능) 계정 — '계정명만' 출력(암호값 노출 금지).
   nox="$(awk -F: '$2!="x" && $2!="*" && $2!="!" {print $1}' "$PASSWD_FILE" 2>/dev/null | tr '\n' ' ' | sed 's/[[:space:]]*$//')"
   # shadow는 해시 노출 방지 위해 '내용 미수록' — 존재·권한(stat)만 근거로 표기.
-  raw="# ${PASSWD_FILE} 평문 암호필드(2번째 비-x) 계정: ${nox:-없음}"$'\n'"# ${SHADOW_FILE} (내용 미수록)"$'\n'"$( [ -f "$SHADOW_FILE" ] && stat_line "$SHADOW_FILE" || echo '(파일 없음)' )"
+  raw="# ${PASSWD_FILE} 평문 암호필드(2번째 비-x) 계정: ${nox:-없음}"$'\n'"# ${SHADOW_FILE} (해시 노출 방지 — 내용 미수록, 존재·권한만)"$'\n'"$( [ -f "$SHADOW_FILE" ] && stat_line "$SHADOW_FILE" || echo '(파일 없음)' )"
   if [ -z "$nox" ] && [ -f "$SHADOW_FILE" ]; then rec U-04 "$R_PASS" "$PASSWD_FILE | $SHADOW_FILE" "$raw" "쉐도우 비밀번호 사용(passwd 내 암호 미저장)"
   else rec U-04 "$R_VULN" "$PASSWD_FILE | $SHADOW_FILE" "$raw" "쉐도우 미사용 또는 passwd에 암호 평문 저장"; fi
 }
@@ -393,7 +467,7 @@ diag_u07(){ local found="" raw="" a all
   found="$(echo $found)"
   # 로우데이터엔 전체 계정을 수록 — '불필요' 판단은 사전목록 외 계정도 AI/담당자가 식별해야 하므로.
   all="$(awk -F: '{print $1" (uid="$3", shell="$7")"}' "$PASSWD_FILE" 2>/dev/null)"
-  raw="# 제거권고 목록(conf) 매칭: ${found:-없음}"$'\n'"# 전체 계정 목록"$'\n'"$all"
+  raw="# 불필요(권고 제거) 후보 매칭: ${found:-없음}"$'\n'"# 전체 계정 목록 (불필요 계정 식별용 — 사전목록 외도 검토)"$'\n'"$all"
   if [ -z "$found" ]; then rec U-07 "$R_PASS" "$PASSWD_FILE" "$raw" "사전목록상 불필요 계정 없음 — 그 외 계정의 불필요 여부는 전체 목록 기준 수동/AI 확인"
   else rec U-07 "$R_VULN" "$PASSWD_FILE" "$raw" "불필요(권고 제거) 계정 존재: ${found} — 사용 여부 수동 확인"; fi
 }
@@ -410,7 +484,7 @@ diag_u09(){ local found="" raw g all
   found="$(echo $found)"
   # 로우데이터엔 전체 그룹을 수록 — 사전목록 외 불필요 그룹도 식별 가능하도록.
   all="$(awk -F: '{print $1" (gid="$3", 멤버="$4")"}' "$GROUP_FILE" 2>/dev/null)"
-  raw="# 제거권고 목록(conf) 매칭: ${found:-없음}"$'\n'"# 전체 그룹 목록"$'\n'"$all"
+  raw="# 불필요(권고 제거) 후보 매칭: ${found:-없음}"$'\n'"# 전체 그룹 목록 (불필요 그룹 식별용)"$'\n'"$all"
   if [ -z "$found" ]; then rec U-09 "$R_PASS" "$GROUP_FILE" "$raw" "사전목록상 불필요 그룹 없음 — 그 외 그룹의 불필요 여부는 전체 목록 기준 수동/AI 확인"
   else rec U-09 "$R_VULN" "$GROUP_FILE" "$raw" "불필요(권고 제거) 그룹 존재: ${found} — 사용 여부 수동 확인"; fi
 }
@@ -515,29 +589,13 @@ diag_u20(){
 diag_u21(){ chk_file_perm U-21 "$SYSLOG_CONF" "root|bin|sys|syslog" "$PERM_SYSLOG_MAX"; }
 diag_u22(){ chk_file_perm U-22 "$SERVICES_FILE" "root|bin|sys" "$PERM_SERVICES_MAX"; }
 
-diag_u23(){ local suidp sgidp nsuid nsgid raw susp="" f base
-  # 전수 열거 + 위치/속성 IOC 자동 플래그(U-33과 동일 원리).
-  #   강한 신호: ① 임시/홈 경로(/tmp,/var/tmp,/dev/shm,/home,/root)의 SUID/SGID — 정상은 시스템 bin 경로에만 존재
-  #             ② SUID/SGID 붙은 셸(bash/sh/…) — 일반 사용자가 실행해 root 권한 탈취하는 백도어 전형
-  suidp="$(find / \( -path /proc -o -path /sys -o -path /run -o -path /dev \) -prune -o -type f -perm -4000 -print 2>/dev/null)"
-  sgidp="$(find / \( -path /proc -o -path /sys -o -path /run -o -path /dev \) -prune -o -type f -perm -2000 -print 2>/dev/null)"
-  nsuid="$(printf '%s' "$suidp" | grep -c .)"; nsgid="$(printf '%s' "$sgidp" | grep -c .)"
-  # IOC 판별(SUID+SGID 경로 합쳐서)
-  while IFS= read -r f; do [ -z "$f" ] && continue
-    base="$(basename "$f")"
-    case "$f"   in /tmp/*|/var/tmp/*|/dev/shm/*|/home/*|/root/*) susp="${susp} ${f}(비정상위치)" ;; esac
-    case "$base" in bash|sh|dash|ash|ksh|zsh|csh|tcsh|busybox)   susp="${susp} ${f}(SUID/SGID 셸)" ;; esac
-  done <<EOF
-$(printf '%s\n%s\n' "$suidp" "$sgidp")
-EOF
-  raw="# SUID (find / -type f -perm -4000) — ${nsuid}개"$'\n'"$(printf '%s' "$suidp" | while IFS= read -r f; do [ -n "$f" ] && stat_line "$f"; done)"
-  raw="${raw}"$'\n'"# SGID (find / -type f -perm -2000) — ${nsgid}개"$'\n'"$(printf '%s' "$sgidp" | while IFS= read -r f; do [ -n "$f" ] && stat_line "$f"; done)"
-  if [ -n "$susp" ]; then
-    rec U-23 "$R_VULN" "find / -perm -4000|-2000 (전수+IOC)" "$raw" "비정상 SUID/SGID 의심(임시·홈 경로 또는 SUID 셸) — 즉시 확인:${susp}"
-  else
-    # 명백한 IOC는 없음 — 단, '불필요/악성' 최종 판단은 자동 불가(정상 위치·이름 위장 백도어 가능) → N/A(수동/AI 확인).
-    rec U-23 "$R_NA" "find / -perm -4000|-2000 (전수)" "$raw" "SUID ${nsuid}·SGID ${nsgid}개 전수 — 명백한 IOC(임시/홈 SUID·SUID 셸) 없음. 불필요/악성 여부는 목록 기반 수동/AI 확인 대상"
-  fi
+diag_u23(){ local suid sgid nsuid nsgid raw
+  # SUID/SGID 파일 전부를 stat(권한 표현)로 나열 + 개수. 불필요/악성 여부는 목록 대조로 수동 판별(N/A).
+  suid="$(find / \( -path /proc -o -path /sys -o -path /run -o -path /dev \) -prune -o -type f -perm -4000 -print 2>/dev/null | while IFS= read -r f; do stat_line "$f"; done | sed '/^$/d')"
+  sgid="$(find / \( -path /proc -o -path /sys -o -path /run -o -path /dev \) -prune -o -type f -perm -2000 -print 2>/dev/null | while IFS= read -r f; do stat_line "$f"; done | sed '/^$/d')"
+  nsuid="$(printf '%s' "$suid" | grep -c .)"; nsgid="$(printf '%s' "$sgid" | grep -c .)"
+  raw="# SUID (find / -type f -perm -4000) — ${nsuid}개"$'\n'"${suid:-(없음)}"$'\n'"# SGID (find / -type f -perm -2000) — ${nsgid}개"$'\n'"${sgid:-(없음)}"
+  rec U-23 "$R_NA" "find / -perm -4000 | -2000" "$raw" "SUID ${nsuid}개 · SGID ${nsgid}개 — 불필요/악성 여부 목록 수동 확인 대상"
 }
 
 diag_u24(){ local bad="" raw="" u sh h f p o
@@ -600,7 +658,7 @@ diag_u28(){ local ha hd deny_all fwout fw_active raw
   # 방화벽 active 판단 — is-active 출력 중 '정확히' active 인 줄이 있을 때만 (※ 'inactive' 부분일치 버그 방지: -qxF)
   fwout="$( { systemctl is-active ufw; systemctl is-active firewalld; systemctl is-active nftables; } 2>/dev/null )"
   fw_active="비활성"; printf '%s\n' "$fwout" | grep -qxF active && fw_active="활성"
-  raw="hosts.allow 규칙 ${ha}개 / hosts.deny 규칙 ${hd}개 (기본차단 ALL:ALL ${deny_all}개)"$'\n'"방화벽: ${fw_active}"
+  raw="hosts.allow 규칙 ${ha}개 / hosts.deny 규칙 ${hd}개 (기본차단 ALL:ALL ${deny_all}개)"$'\n'"방화벽: ${fw_active} (AWS 보안그룹은 별도)"
   # 양호: 방화벽 활성 OR hosts.deny 기본차단(ALL:ALL) 설정 — 실제 접근제한이 성립할 때만
   if [ "$fw_active" = "활성" ] || [ "${deny_all:-0}" -gt 0 ]; then
     rec U-28 "$R_PASS" "/etc/hosts.allow | /etc/hosts.deny | firewall" "$raw" "접속 IP/포트 제한(방화벽 또는 TCP Wrapper 기본차단) 적용됨"
@@ -609,31 +667,29 @@ diag_u28(){ local ha hd deny_all fwout fw_active raw
 
 diag_u29(){ if [ ! -e "$HOSTS_LPD" ]; then rec U-29 "$R_PASS" "$HOSTS_LPD" "(hosts.lpd 파일 없음)" "hosts.lpd 미사용(파일 없음)"; else chk_file_perm U-29 "$HOSTS_LPD" "root" "$PERM_HOSTSLPD_MAX"; fi; }
 
-diag_u30(){ local raw="" uhits phits low_bad="" has_ok="" upg="" upg_ev="" line f val
+diag_u30(){ local raw="" uhits phits low_bad="" has_ok="" upg="" line f val
   # umask/UMASK 설정 라인 수집(파일:내용 원문). 맨 앞 값 하나가 아니라 '전체'를 평가.
   uhits="$(grep -rHiE '^[[:space:]]*(export[[:space:]]+)?umask[[:space:]=]+[0-7]{3}|^[[:space:]]*UMASK[[:space:]]+[0-7]{3}' "$PROFILE_FILE" "$LOGIN_DEFS" /etc/profile.d/ /etc/bashrc /etc/bash.bashrc 2>/dev/null | grep -vE ':[[:space:]]*#' | tr -s ' \t' ' ')"
   phits="$(grep -rHE 'pam_umask' "$PAM_DIR" 2>/dev/null | grep -vE ':[[:space:]]*#' | tr -s ' \t' ' ' | head -2)"
   # 각 umask 값 평가: ≥022면 양호 근거, <022면 해당 파일이 UPG 가드(id -gn==id -un / UID -gt)를 가지면
-  #   사설그룹 한정 조건부, 가드 없으면 '무조건 느슨' → 취약. (해석은 판단근거로, 점검내용엔 가드 '원문'만)
+  #   사설그룹 한정 조건부(안전), 가드 없으면 '무조건 느슨' → 취약.
   while IFS= read -r line; do
     [ -z "$line" ] && continue
     f="${line%%:*}"; val="$(printf '%s' "$line" | grep -oE '[0-7]{3}' | tail -1)"
     [ -z "$val" ] && continue
     if [ "$((8#$val))" -ge "$((8#$UMASK_MIN))" ] 2>/dev/null; then has_ok="yes"
-    elif grep -qE 'id -gn|id -un|UID[[:space:]]*-gt' "$f" 2>/dev/null; then
-      upg="yes"
-      upg_ev="${upg_ev}# ${f} (UPG 가드 라인): $(grep -hE 'id -gn|id -un|UID[[:space:]]*-gt' "$f" 2>/dev/null | head -1 | sed 's/^[[:space:]]*//' | tr -s ' \t' ' ')"$'\n'
+    elif grep -qE 'id -gn|id -un|UID[[:space:]]*-gt' "$f" 2>/dev/null; then upg="yes"
     else low_bad="$low_bad ${f}=${val}"; fi
   done <<EOF
 $uhits
 EOF
-  # 점검내용 = 객관 증적만(umask 라인 + pam_umask + UPG 가드 원문). 결론/조건부 판단은 판단 근거에.
   raw="${uhits:-(명시적 UMASK 설정 라인 없음)}"$'\n'"${phits:-(pam_umask 미사용)}"
-  [ -n "$upg_ev" ] && raw="${raw}"$'\n'"${upg_ev%$'\n'}"
+  [ -n "$upg" ] && raw="${raw}"$'\n'"※ 022 미만 umask 는 UPG(사설그룹·uid==gid명) 조건부 → 안전"
+  [ -n "$low_bad" ] && raw="${raw}"$'\n'"※ 무조건 022 미만 UMASK:${low_bad}"
   if [ -n "$low_bad" ]; then
     rec U-30 "$R_VULN" "/etc/profile | login.defs | $PAM_DIR" "$raw" "무조건 022 미만 UMASK 존재(과도한 기본 권한 부여):${low_bad}"
   elif [ -n "$has_ok" ] || [ -n "$phits" ]; then
-    rec U-30 "$R_PASS" "/etc/profile | login.defs | $PAM_DIR" "$raw" "UMASK ${UMASK_MIN} 이상 적용$( [ -n "$upg" ] && printf ' (UPG 조건부: 022 미만이라도 사설그룹(uid==gid) 한정이라 안전)')"
+    rec U-30 "$R_PASS" "/etc/profile | login.defs | $PAM_DIR" "$raw" "UMASK ${UMASK_MIN} 이상 적용$( [ -n "$upg" ] && printf ' (UPG 조건부 002 는 사설그룹 한정으로 안전)')"
   else rec U-30 "$R_VULN" "/etc/profile | login.defs | $PAM_DIR" "$raw" "UMASK 미설정 또는 ${UMASK_MIN} 미만"; fi
 }
 
@@ -669,27 +725,13 @@ diag_u32(){ local bad="" raw="" u h uid
   else rec U-32 "$R_VULN" "$PASSWD_FILE" "$raw" "홈 디렉터리가 존재하지 않는 계정:${bad}"; fi
 }
 
-diag_u33(){ local raw="" exec_hits="" f d seen="" homes n=0
-  # '전수' 열거 — basename 화이트리스트로 거르지 않는다(같은 이름을 다른 경로/속성으로 위장하면 통과하는 허점).
-  #   쓰기 가능 영역(홈/임시/skel)의 숨김 항목을 모두 stat로 표기 + 강한 IOC인 '실행권한 보유 숨김 파일'을 취약 판정.
-  #   (정상 dotfile은 비실행 → 실행권한 숨김 파일은 은닉 실행파일 의심. 비실행 이상치는 전수 목록으로 AI/담당자 판별)
-  homes="$(awk -F: '$3>=1000 && $6!="" {print $6}' "$PASSWD_FILE" 2>/dev/null) /root /tmp /var/tmp /dev/shm /etc/skel"
-  for d in $homes; do
-    [ -d "$d" ] || continue
-    case " $seen " in *" $d "*) continue ;; esac; seen="$seen $d"
-    while IFS= read -r f; do
-      [ -z "$f" ] && continue
-      raw="${raw}$(stat_line "$f")"$'\n'; n=$((n+1))
-      [ -f "$f" ] && [ -x "$f" ] && exec_hits="${exec_hits} ${f}"   # 실행권한 보유 숨김 파일 = 강한 신호
-    done < <(find "$d" -maxdepth 1 -name '.*' ! -name '.' ! -name '..' 2>/dev/null)
-  done
-  [ "$n" -eq 0 ] && raw="(홈/임시/skel 디렉터리에 숨김 파일/디렉터리 없음)"
-  if [ -n "$exec_hits" ]; then
-    rec U-33 "$R_VULN" "홈/임시/skel 숨김 항목(전수)" "$raw" "실행권한 보유 숨김 파일 존재(은닉 실행파일 의심) — 즉시 확인:${exec_hits}"
-  else
-    # 실행권한 IOC는 없음 — 단, 비실행 은닉 백도어 등 '의심' 최종 판단은 자동 불가 → N/A(수동/AI 확인).
-    rec U-33 "$R_NA" "홈/임시/skel 숨김 항목(전수)" "$raw" "숨김 항목 ${n}개 전수 — 실행권한 보유 은닉 파일 없음. 비표준/의심 항목 여부는 목록 기반 수동/AI 확인 대상"
-  fi
+diag_u33(){ local raw="" all n
+  # 시스템 전체(/) 숨김 파일/디렉터리 검색(의사 파일시스템만 제외). 필터 없이 전부 나열 → 비정상/불필요 항목은 사람이 판별(수동 확인).
+  all="$(find / \( -path /proc -o -path /sys -o -path /run -o -path /dev \) -prune -o -name '.*' ! -name '.' ! -name '..' -print 2>/dev/null | while IFS= read -r f; do stat_line "$f"; done | sed '/^$/d')"
+  n="$(printf '%s' "$all" | grep -c .)"
+  if [ "$n" -eq 0 ]; then raw="(숨김 파일/디렉터리 없음)"
+  else raw="$all"; [ "$n" -gt 100 ] && raw="$(printf '%s' "$all" | head -100)"$'\n'"... 외 $((n-100))개 (전체는 raw CSV 참조)"; fi
+  rec U-33 "$R_NA" "find / (의사FS 제외)" "$raw" "숨김 파일/디렉터리 총 ${n}개 — 비정상/불필요 항목 목록 수동 확인 대상"
 }
 
 #############################################################################
@@ -806,7 +848,7 @@ diag_u58(){ chk_svc_off U-58 snmpd snmp; }
 diag_u59(){ if ! svc_running snmpd; then rec U-59 "$R_PASS" "snmp" "$(svc_stat "snmpd")" "SNMP 미사용"; return; fi
   local v; v="$(grep -iE '^[[:space:]]*(rouser|rwuser|createUser)' "$SNMPD_CONF" 2>/dev/null | head -2)"
   if [ -n "$v" ]; then rec U-59 "$R_PASS" "$SNMPD_CONF" "$v" "SNMP v3(사용자 기반) 설정 존재"
-  else rec U-59 "$R_VULN" "$SNMPD_CONF" "(rouser/rwuser/createUser 설정 라인 없음)" "SNMP v2 이하 사용 추정 — v3 권고"; fi
+  else rec U-59 "$R_VULN" "$SNMPD_CONF" "(v3 user 미설정, community 기반 추정)" "SNMP v2 이하 사용 추정 — v3 권고"; fi
 }
 diag_u60(){ if ! svc_running snmpd; then rec U-60 "$R_PASS" "snmp" "$(svc_stat "snmpd")" "SNMP 미사용"; return; fi
   local c; c="$(grep -iE '^[[:space:]]*(rocommunity|rwcommunity|com2sec)' "$SNMPD_CONF" 2>/dev/null | grep -oiE 'public|private' | head -1)"
@@ -891,7 +933,7 @@ diag_u67(){ local bad="" raw="" f fcount=0
 show_preinfo; echo
 # ── 권한 사전 점검: 관리자(root) 권한이 아니면 예외(중단) ──
 #    /etc/shadow(640)·SUID 점검·환경설정 등 권한 제한 자원을 읽어야 정확하므로 root 필요.
-if [ "$(id -u)" -ne 0 ]; then
+if [ "${SKIP_ROOT_CHECK:-0}" != "1" ] && [ "$(id -u)" -ne 0 ]; then
   {
     echo ""
     echo "================================================================"
@@ -904,11 +946,17 @@ if [ "$(id -u)" -ne 0 ]; then
   exit 2
 fi
 
-for n in 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 \
-         24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 \
-         47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67; do
-  "diag_u${n}"
-done
+if [ -n "${TEST_ITEMS:-}" ]; then
+  for n in $TEST_ITEMS; do
+    "diag_u${n}"
+  done
+else
+  for n in 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 \
+           24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 \
+           47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67; do
+    "diag_u${n}"
+  done
+fi
 
 TOTAL=$((CNT_PASS+CNT_VULN+CNT_NA))
 
@@ -926,9 +974,9 @@ TOTAL=$((CNT_PASS+CNT_VULN+CNT_NA))
 csv_field(){ local v; v="$(printf '%s' "$1" | sed 's/"/""/g' | awk '{a[NR]=$0} END{for(i=1;i<=NR;i++) printf "%s%s",(i>1?" | ":""),a[i]}')"; printf '"%s"' "$v"; }
 {
   printf '\xEF\xBB\xBF'   # UTF-8 BOM — Excel 한글 깨짐 방지
-  printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' "$(csv_field 항목코드)" "$(csv_field 분류)" "$(csv_field 항목)" "$(csv_field 판단기준)" "$(csv_field 결과)" "$(csv_field 점검내용)" "$(csv_field 진단대상)" "$(csv_field 진단대상IP)" "$(csv_field 중요도)" "$(csv_field 점검파일)"
+  printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' "$(csv_field 항목코드)" "$(csv_field 분류)" "$(csv_field 항목)" "$(csv_field 판단기준)" "$(csv_field 결과)" "$(csv_field 점검내용)" "$(csv_field 조치방법)" "$(csv_field 진단대상)" "$(csv_field 진단대상IP)" "$(csv_field 중요도)" "$(csv_field 점검파일)"
   i=0; while [ "$i" -lt "${#F_CODE[@]}" ]; do
-    printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' "$(csv_field "${F_CODE[$i]}")" "$(csv_field "${F_CAT[$i]}")" "$(csv_field "${F_NAME[$i]}")" "$(csv_field "${F_STD[$i]}")" "$(csv_field "${F_RESULT[$i]}")" "$(csv_field "${F_RAW[$i]}")" "$(csv_field "$TARGET_SYS")" "$(csv_field "$IP_ADDR")" "$(csv_field "${F_SEV[$i]}")" "$(csv_field "${F_FILE[$i]}")"; i=$((i+1)); done
+    printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' "$(csv_field "${F_CODE[$i]}")" "$(csv_field "${F_CAT[$i]}")" "$(csv_field "${F_NAME[$i]}")" "$(csv_field "${F_STD[$i]}")" "$(csv_field "${F_RESULT[$i]}")" "$(csv_field "${F_RAW[$i]}")" "$(csv_field "${F_ACTION[$i]}")" "$(csv_field "$TARGET_SYS")" "$(csv_field "$IP_ADDR")" "$(csv_field "${F_SEV[$i]}")" "$(csv_field "${F_FILE[$i]}")"; i=$((i+1)); done
 } > "$RAW_CSV"
 
 echo "================================================================"

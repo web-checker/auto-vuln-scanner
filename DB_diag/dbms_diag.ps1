@@ -237,6 +237,35 @@ $Std['D-24']=@{P='제한이 필요한 시스템 확장 저장 프로시저들이
 $Std['D-25']=@{P='보안 패치가 적용된 버전을 사용하는 경우';V='보안 패치가 적용되지 않는 버전을 사용하는 경우'}
 $Std['D-26']=@{P='DBMS의 감사 로그 저장 정책이 수립되어 있으며, 정책 설정이 적용된 경우';V='DBMS에 대한 감사 로그 저장을 하지 않거나, 정책 설정이 적용되지 않은 경우'}
 
+# ── KISA 조치 방법(원문) D-01~26 ── (08_DBMS.pdf '조치 방법' 필드 원문 그대로)
+$Fix=@{}
+$Fix['D-01']='기본(관리자) 계정의 초기 비밀번호 및 권한 정책 변경'
+$Fix['D-02']='계정별 용도를 파악한 후 불필요한 계정 삭제'
+$Fix['D-03']='기관 정책에 맞게 비밀번호 사용 기간 및 복잡도 정책 설정'
+$Fix['D-04']='관리자 권한이 필요한 계정 및 그룹에만 관리자 권한 부여'
+$Fix['D-05']='PASSWORD_REUSE_TIME, PASSWORD_REUSE_MAX 파라미터 설정'
+$Fix['D-06']='사용자별 계정 생성 및 권한 부여'
+$Fix['D-07']='DBMS 구동 계정 변경'
+$Fix['D-08']='SHA-256 이상의 암호화 알고리즘 적용'
+$Fix['D-09']='로그인 시도 횟수 제한 값 설정'
+$Fix['D-10']='DB 서버에 대해 지정된 IP주소에서만 접근 가능하도록 설정'
+$Fix['D-11']='시스템 테이블에 일반 사용자 계정이 접근할 수 없도록 설정'
+$Fix['D-12']='Listener 비밀번호 설정'
+$Fix['D-13']='불필요한 ODBC/OLE-DB 제거'
+$Fix['D-14']='주요 설정 파일 및 디렉터리의 권한 설정 변경'
+$Fix['D-15']='주요 파일 및 로그 파일에 대한 권한을 관리자로 제한'
+$Fix['D-16']='Windows 인증 모드 사용'
+$Fix['D-17']='Audit Table 접근 권한을 관리자 계정으로 제한'
+$Fix['D-18']='DBA 계정의 Role 설정에서 Public 그룹 권한 취소'
+$Fix['D-19']='OS_ROLES, REMOTE_OS_AUTHENTICATION, REMOTE_OS_ROLES 설정을 FALSE로 변경'
+$Fix['D-20']='Object Owner를 SYS, SYSTEM, 관리자 계정으로 제한 설정'
+$Fix['D-21']='WITH_GRANT_OPTION이 ROLE에 의하여 설정되도록 변경'
+$Fix['D-22']='RESOURCE_LIMIT 설정을 TRUE로 설정 변경'
+$Fix['D-23']='xp_cmdshell 설정 값을 0 또는 False로 설정'
+$Fix['D-24']='guest/public에게 부여된 시스템 확장 저장 프로시저 권한 제거'
+$Fix['D-25']='보안 패치가 적용된 버전으로 업데이트'
+$Fix['D-26']='DBMS에 대한 감사 로그 저장 정책 수립, 적용'
+
 # 출력 헬퍼 + 분류 표기(PDF 공백) 매핑 + 진단대상
 $CatMap=@{'계정관리'='계정 관리';'접근관리'='접근 관리';'옵션관리'='옵션 관리';'패치관리'='패치 관리'}
 $TargetSys='DBMS(Oracle)'
@@ -282,7 +311,8 @@ function Add-Result {
     $m = $Meta[$Code]; $Cnt[$Result]++
     $Raw = StripParen $Raw            # 결과 없음(자연어) 단일라인 (…) 괄호 제거
     $std = StdBlock $Code             # 판단기준 원문(양호/취약)
-    [void]$Results.Add([pscustomobject]@{ Code=$Code; Sev=$m.Sev; Name=$m.Name; Cat=$m.Cat; File=$File; Raw=$Raw; Result=$Result; Summary=$Summary; Std=$std })
+    $fix = if ($Fix.ContainsKey($Code)) { $Fix[$Code] } else { '' }   # 조치방법 원문(가이드 하드코딩)
+    [void]$Results.Add([pscustomobject]@{ Code=$Code; Sev=$m.Sev; Name=$m.Name; Cat=$m.Cat; File=$File; Raw=$Raw; Result=$Result; Summary=$Summary; Std=$std; Fix=$fix })
     $clr = switch ($Result) { $PASS {'Green'} $VULN {'Red'} default {'Cyan'} }
     Write-Host ("[{0} ({1}) {2}]" -f $Code,$m.Sev,$m.Name)
     Write-Host ("점검 결과    : {0}" -f $Result) -ForegroundColor $clr
@@ -774,10 +804,10 @@ foreach($r in $Results){ [void]$rep.Add( ((Format-Block $r) -join "`n") ) }
 
 function CsvF($s){ '"' + (("$s" -replace '"','""') -replace "`r?`n",' | ') + '"' }
 $csv = New-Object System.Collections.ArrayList
-[void]$csv.Add( (@('항목코드','분류','항목','판단기준','결과','점검내용','진단대상','진단대상IP','중요도','점검파일') | ForEach-Object { CsvF $_ }) -join ',' )
+[void]$csv.Add( (@('항목코드','분류','항목','판단기준','결과','점검내용','조치방법','진단대상','진단대상IP','중요도','점검파일') | ForEach-Object { CsvF $_ }) -join ',' )
 foreach($r in $Results){
     $cat = if ($CatMap.ContainsKey($r.Cat)) { $CatMap[$r.Cat] } else { $r.Cat }
-    [void]$csv.Add( (@($r.Code,$cat,$r.Name,$r.Std,$r.Result,$r.Raw,$TargetSys,$IP,$r.Sev,$r.File) | ForEach-Object { CsvF $_ }) -join ',' )
+    [void]$csv.Add( (@($r.Code,$cat,$r.Name,$r.Std,$r.Result,$r.Raw,$r.Fix,$TargetSys,$IP,$r.Sev,$r.File) | ForEach-Object { CsvF $_ }) -join ',' )
 }
 [System.IO.File]::WriteAllText($RawCsv, ($csv -join "`r`n"), (New-Object System.Text.UTF8Encoding($true)))
 
