@@ -162,7 +162,7 @@ $IP     = (Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
 
 if (-not (Test-Path $Conf.OutputDir)) { New-Item -ItemType Directory -Path $Conf.OutputDir -Force | Out-Null }
 $RawCsv = Join-Path $Conf.OutputDir "dbms_diag_raw_${Label}_${TSFile}.csv"
-$Report = Join-Path $Conf.OutputDir "dbms_diag_report_${Label}_${TSFile}.txt"
+$History = Join-Path $Conf.OutputDir "dbms_diag_report_${Label}_${TSFile}.txt"
 
 # DB 접속 테스트 (진단 분리: ① 접속 자체 ② 컨테이너 전환)
 $dbOk = $false
@@ -800,7 +800,7 @@ $rep = New-Object System.Collections.ArrayList
 [void]$rep.Add("================================================================")
 foreach($r in $Results){ [void]$rep.Add( ((Format-Block $r) -join "`n") ) }
 [void]$rep.Add("※ N/A = 해당없음(MSSQL 전용·버전 미해당·조회 불가). 취약 항목은 담당자 검토 후 조치 권고.")
-[System.IO.File]::WriteAllText($Report, ($rep -join "`r`n"), (New-Object System.Text.UTF8Encoding($true)))
+[System.IO.File]::WriteAllText($History, ($rep -join "`r`n"), (New-Object System.Text.UTF8Encoding($true)))
 
 function CsvF($s){ '"' + (("$s" -replace '"','""') -replace "`r?`n",' | ') + '"' }
 $csv = New-Object System.Collections.ArrayList
@@ -813,7 +813,7 @@ foreach($r in $Results){
 
 Write-Host "================================================================"
 Write-Host ("[종합] 총 {0}개 | 양호 {1} | 취약 {2} | N/A {3}" -f $Total,$Cnt[$PASS],$Cnt[$VULN],$Cnt[$NA])
-Write-Host (" 보고서(TXT)     : {0}" -f $Report)
+Write-Host (" 히스토리(TXT)   : {0}" -f $History)
 Write-Host (" 로우데이터(CSV) : {0}" -f $RawCsv)
 Write-Host "진단 스크립트 종료"
 Write-Host ""

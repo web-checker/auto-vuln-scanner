@@ -39,7 +39,7 @@ TARGET_SYS="Linux(${OS_ID:-unix})"   # 진단대상(자산 종류) — CSV/화�
 
 mkdir -p "$OUTPUT_DIR" 2>/dev/null || { echo "[ERROR] 출력 디렉터리 생성 실패: $OUTPUT_DIR" >&2; exit 1; }
 RAW_CSV="${OUTPUT_DIR}/linux_diag_raw_${LABEL}_${TS_FILE}.csv"
-REPORT="${OUTPUT_DIR}/linux_diag_report_${LABEL}_${TS_FILE}.txt"
+HISTORY="${OUTPUT_DIR}/linux_diag_report_${LABEL}_${TS_FILE}.txt"
 
 F_CODE=(); F_SEV=(); F_NAME=(); F_CAT=(); F_FILE=(); F_RAW=(); F_RESULT=(); F_SUMMARY=(); F_STD=(); F_ACTION=()
 CNT_PASS=0; CNT_VULN=0; CNT_NA=0
@@ -968,7 +968,7 @@ TOTAL=$((CNT_PASS+CNT_VULN+CNT_NA))
   i=0; while [ "$i" -lt "${#F_CODE[@]}" ]; do
     emit_screen "${F_CODE[$i]}" "${F_SEV[$i]}" "${F_NAME[$i]}" "${F_STD[$i]}" "${F_RESULT[$i]}" "${F_RAW[$i]}" "${F_FILE[$i]}"; i=$((i+1)); done
   echo "※ '수동 확인' 표기 항목과 취약 항목은 담당자의 실제 설정 검토로 최종 확정 필요."
-} > "$REPORT"
+} > "$HISTORY"
 
 # ── 로우데이터 CSV ─────────────────────────────────────────
 csv_field(){ local v; v="$(printf '%s' "$1" | sed 's/"/""/g' | awk '{a[NR]=$0} END{for(i=1;i<=NR;i++) printf "%s%s",(i>1?" | ":""),a[i]}')"; printf '"%s"' "$v"; }
@@ -981,6 +981,6 @@ csv_field(){ local v; v="$(printf '%s' "$1" | sed 's/"/""/g' | awk '{a[NR]=$0} E
 
 echo "================================================================"
 printf "[종합] 총 %d개 | 양호 %d | 취약 %d | N/A %d\n" "$TOTAL" "$CNT_PASS" "$CNT_VULN" "$CNT_NA"
-echo " 보고서(TXT)     : $REPORT"
+echo " 히스토리(TXT)   : $HISTORY"
 echo " 로우데이터(CSV) : $RAW_CSV"
 echo "진단 스크립트 종료"

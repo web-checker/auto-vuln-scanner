@@ -1034,13 +1034,13 @@ run_has 4 && check_operation
 TOTAL=$((PASS_CNT+FAIL_CNT+NA_CNT))
 
 # ---- 산출물 저장 (CSV 11컬럼 + 보고서 TXT) ----
-REPORT=""; RAW_CSV=""
+HISTORY=""; RAW_CSV=""
 if [ -n "$OUTDIR" ]; then
   mkdir -p "$OUTDIR"
   TS="$(date +%Y%m%d_%H%M%S)"
   LABEL="${ACCOUNT_ID:-unknown}"
   RAW_CSV="$OUTDIR/cloud_diag_raw_${LABEL}_${TS}.csv"
-  REPORT="$OUTDIR/cloud_diag_report_${LABEL}_${TS}.txt"
+  HISTORY="$OUTDIR/cloud_diag_report_${LABEL}_${TS}.txt"
 
   # CSV: UTF-8 BOM + 11컬럼 (점검내용↔진단대상 사이에 조치방법 삽입 — 대시보드 표시용)
   { printf '\xEF\xBB\xBF'
@@ -1068,14 +1068,14 @@ if [ -n "$OUTDIR" ]; then
     for i in "${!F_CODE[@]}"; do
       emit_screen "${F_CODE[$i]}" "${F_SEV[$i]}" "${F_NAME[$i]}" "${F_STD[$i]}" "${F_RESULT[$i]}" "${F_RAW[$i]}" "${F_FILE[$i]}"
     done
-  } > "$REPORT"
+  } > "$HISTORY"
 fi
 
 # ---- 종합 요약 (다른 진단 스크립트와 동일 양식) ----
 echo "================================================================"
 printf "[종합] 총 %d개 | 양호 %d | 취약 %d | N/A %d\n" "$TOTAL" "$PASS_CNT" "$FAIL_CNT" "$NA_CNT"
 if [ -n "$OUTDIR" ]; then
-  echo " 보고서(TXT)     : $REPORT"
+  echo " 히스토리(TXT)   : $HISTORY"
   echo " 로우데이터(CSV) : $RAW_CSV"
 fi
 echo "진단 스크립트 종료"

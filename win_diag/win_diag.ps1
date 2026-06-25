@@ -63,7 +63,7 @@ if (-not $IP) { $IP = (try { [System.Net.Dns]::GetHostAddresses($env:COMPUTERNAM
 if (-not $IP) { $IP = ((ipconfig) -match 'IPv4' | ForEach-Object { if ($_ -match '(\d+\.\d+\.\d+\.\d+)') { $matches[1] } } | Where-Object { $_ -notlike '127.*' -and $_ -notlike '169.254.*' } | Select-Object -First 1) }
 if (-not (Test-Path $Conf.OutputDir)) { New-Item -ItemType Directory -Path $Conf.OutputDir -Force | Out-Null }
 $RawCsv = Join-Path $Conf.OutputDir "win_diag_raw_${Label}_${TSFile}.csv"
-$Report = Join-Path $Conf.OutputDir "win_diag_report_${Label}_${TSFile}.txt"
+$History = Join-Path $Conf.OutputDir "win_diag_report_${Label}_${TSFile}.txt"
 
 # ── 항목 메타 (코드→중요도/분류/이름) ────────────────────
 $Codes = 1..64 | ForEach-Object { 'W-{0:D2}' -f $_ }
@@ -1112,7 +1112,7 @@ $rep = New-Object System.Collections.ArrayList
 foreach($r in $Results){ [void]$rep.Add( (Format-Block $r) -join "`n" ) }
 [void]$rep.Add("※ 'N/A(수동 확인)' 표기 항목과 취약 항목은 담당자의 실제 설정 검토로 최종 확정 필요.")
 # TXT: 한글 호환을 위해 BOM 포함 UTF-8로 저장
-[System.IO.File]::WriteAllText($Report, ($rep -join "`r`n"), (New-Object System.Text.UTF8Encoding($true)))
+[System.IO.File]::WriteAllText($History, ($rep -join "`r`n"), (New-Object System.Text.UTF8Encoding($true)))
 
 function CsvF($s){ '"' + (($s -replace '"','""') -replace "`r?`n",' | ') + '"' }
 $csv = New-Object System.Collections.ArrayList
@@ -1127,7 +1127,7 @@ foreach($r in $Results){
 
 Write-Host "================================================================"
 Write-Host ("[종합] 총 {0}개 | 양호 {1} | 취약 {2} | N/A {3}" -f $Total,$Cnt[$PASS],$Cnt[$VULN],$Cnt[$NA])
-Write-Host (" 보고서(TXT)     : {0}" -f $Report)
+Write-Host (" 히스토리(TXT)   : {0}" -f $History)
 Write-Host (" 로우데이터(CSV) : {0}" -f $RawCsv)
 Write-Host "진단 스크립트 종료"
 Write-Host ""
