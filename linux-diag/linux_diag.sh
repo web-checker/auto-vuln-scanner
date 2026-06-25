@@ -39,7 +39,7 @@ TARGET_SYS="Linux(${OS_ID:-unix})"   # 진단대상(자산 종류) — CSV/화�
 
 mkdir -p "$OUTPUT_DIR" 2>/dev/null || { echo "[ERROR] 출력 디렉터리 생성 실패: $OUTPUT_DIR" >&2; exit 1; }
 RAW_CSV="${OUTPUT_DIR}/linux_diag_raw_${LABEL}_${TS_FILE}.csv"
-HISTORY="${OUTPUT_DIR}/linux_diag_report_${LABEL}_${TS_FILE}.txt"
+HISTORY="${OUTPUT_DIR}/linux_diag_history_${LABEL}_${TS_FILE}.txt"
 
 F_CODE=(); F_SEV=(); F_NAME=(); F_CAT=(); F_FILE=(); F_RAW=(); F_RESULT=(); F_SUMMARY=(); F_STD=(); F_ACTION=()
 CNT_PASS=0; CNT_VULN=0; CNT_NA=0

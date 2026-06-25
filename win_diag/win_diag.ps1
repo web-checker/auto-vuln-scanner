@@ -63,7 +63,7 @@ if (-not $IP) { $IP = (try { [System.Net.Dns]::GetHostAddresses($env:COMPUTERNAM
 if (-not $IP) { $IP = ((ipconfig) -match 'IPv4' | ForEach-Object { if ($_ -match '(\d+\.\d+\.\d+\.\d+)') { $matches[1] } } | Where-Object { $_ -notlike '127.*' -and $_ -notlike '169.254.*' } | Select-Object -First 1) }
 if (-not (Test-Path $Conf.OutputDir)) { New-Item -ItemType Directory -Path $Conf.OutputDir -Force | Out-Null }
 $RawCsv = Join-Path $Conf.OutputDir "win_diag_raw_${Label}_${TSFile}.csv"
-$History = Join-Path $Conf.OutputDir "win_diag_report_${Label}_${TSFile}.txt"
+$History = Join-Path $Conf.OutputDir "win_diag_history_${Label}_${TSFile}.txt"
 
 # ── 항목 메타 (코드→중요도/분류/이름) ────────────────────
 $Codes = 1..64 | ForEach-Object { 'W-{0:D2}' -f $_ }

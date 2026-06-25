@@ -162,7 +162,7 @@ $IP     = (Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
 
 if (-not (Test-Path $Conf.OutputDir)) { New-Item -ItemType Directory -Path $Conf.OutputDir -Force | Out-Null }
 $RawCsv = Join-Path $Conf.OutputDir "dbms_diag_raw_${Label}_${TSFile}.csv"
-$History = Join-Path $Conf.OutputDir "dbms_diag_report_${Label}_${TSFile}.txt"
+$History = Join-Path $Conf.OutputDir "dbms_diag_history_${Label}_${TSFile}.txt"
 
 # DB 접속 테스트 (진단 분리: ① 접속 자체 ② 컨테이너 전환)
 $dbOk = $false

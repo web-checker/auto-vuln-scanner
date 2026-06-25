@@ -1040,7 +1040,7 @@ if [ -n "$OUTDIR" ]; then
   TS="$(date +%Y%m%d_%H%M%S)"
   LABEL="${ACCOUNT_ID:-unknown}"
   RAW_CSV="$OUTDIR/cloud_diag_raw_${LABEL}_${TS}.csv"
-  HISTORY="$OUTDIR/cloud_diag_report_${LABEL}_${TS}.txt"
+  HISTORY="$OUTDIR/cloud_diag_history_${LABEL}_${TS}.txt"
 
   # CSV: UTF-8 BOM + 11컬럼 (점검내용↔진단대상 사이에 조치방법 삽입 — 대시보드 표시용)
   { printf '\xEF\xBB\xBF'
