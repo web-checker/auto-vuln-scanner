@@ -11,3 +11,6 @@
 
 # .gitignore 자체는 추적
 !.gitignore
+
+# 공통 README(루트)만 문서로 추적 — 결과물/기타 .md 는 계속 무시
+!/README.md
