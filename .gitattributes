@@ -1,0 +1,11 @@
+# 리눅스에서 실행/소싱되는 파일은 항상 LF (Windows 체크아웃 시 CRLF 변환 방지)
+# CRLF가 섞이면 bash가 $'\r' 로 깨짐 (line: syntax error near `$'in\r'')
+*.sh   text eol=lf
+*.conf text eol=lf
+
+# PowerShell은 Windows에서 실행 → CRLF
+*.ps1  text eol=crlf
+
+# 문서/데이터는 자동 정규화(저장은 LF)
+*.md   text eol=lf
+*.csv  text eol=lf

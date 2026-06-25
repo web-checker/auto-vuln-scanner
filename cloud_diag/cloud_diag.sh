@@ -49,14 +49,6 @@ done
 [ -n "${AWS_PROFILE_DEFAULT:-}" ] && export AWS_PROFILE="$AWS_PROFILE_DEFAULT"
 [ -n "${REGION_DEFAULT:-}" ] && { export AWS_REGION="$REGION_DEFAULT"; export AWS_DEFAULT_REGION="$REGION_DEFAULT"; }
 
-# ===== 1. 색상 =====
-if [ -t 1 ]; then
-  C_RESET=$'\033[0m'; C_RED=$'\033[31m'; C_GRN=$'\033[32m'
-  C_YEL=$'\033[33m'; C_BLU=$'\033[34m'; C_GRY=$'\033[90m'; C_BLD=$'\033[1m'
-else
-  C_RESET=""; C_RED=""; C_GRN=""; C_YEL=""; C_BLU=""; C_GRY=""; C_BLD=""
-fi
-
 # ===== 2. 결과 누적 배열 (OUTPUT_REFORMAT §2 컬럼 구성) =====
 declare -a F_CODE F_CAT F_NAME F_STD F_FIX F_RESULT F_RAW F_SEV F_FILE
 PASS_CNT=0; FAIL_CNT=0; NA_CNT=0
@@ -241,7 +233,7 @@ aws_ro(){
   local action="$2"
   case "$action" in
     describe-*|list-*|get-*|lookup-*|generate-credential-report) : ;;
-    *) echo "${C_RED}[차단] 읽기전용 아닌 호출: aws $1 $2${C_RESET}" >&2; return 90 ;;
+    *) echo "[차단] 읽기전용 아닌 호출: aws $1 $2" >&2; return 90 ;;
   esac
   aws "$@" 2>/dev/null
 }
@@ -318,12 +310,10 @@ record(){
   F_CODE+=("$code"); F_CAT+=("$cat"); F_NAME+=("$name"); F_STD+=("$std"); F_FIX+=("$fix")
   F_RESULT+=("$result"); F_RAW+=("$raw"); F_SEV+=("$sev"); F_FILE+=("$file")
   # 실시간 출력(화면=보고서 동일 양식)
-  local color
-  case "$status" in PASS) color="$C_GRN";; FAIL) color="$C_RED";; NA) color="$C_GRY";; esac
-  printf '%s' "$color"; emit_screen "$code" "$sev" "$name" "$std" "$result" "$raw" "$file"; printf '%s' "$C_RESET"
+  emit_screen "$code" "$sev" "$name" "$std" "$result" "$raw" "$file"
 }
 
-section(){ printf "\n${C_BLD}${C_BLU}■ %s${C_RESET}\n" "$1"; }
+section(){ printf "\n■ %s\n" "$1"; }
 
 # 자격증명 보고서 캐시(IAM 다수 항목 재사용)
 CRED_REPORT_CSV=""
@@ -339,9 +329,9 @@ ensure_cred_report(){
 
 # ===== 5. 전제 점검 =====
 preflight(){
-  command -v aws >/dev/null 2>&1 || { echo "${C_RED}AWS CLI 미설치${C_RESET}" >&2; exit 1; }
+  command -v aws >/dev/null 2>&1 || { echo "AWS CLI 미설치" >&2; exit 1; }
   WHOAMI=$(aws sts get-caller-identity --query 'Arn' --output text 2>/dev/null)
-  [ -n "$WHOAMI" ] || { echo "${C_RED}AWS 자격증명 확인 불가 (aws configure / 프로파일)${C_RESET}" >&2; exit 1; }
+  [ -n "$WHOAMI" ] || { echo "AWS 자격증명 확인 불가 (aws configure / 프로파일)" >&2; exit 1; }
   ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text 2>/dev/null)
   REGION_EFF="${AWS_REGION:-$(aws configure get region 2>/dev/null)}"
   IP_ADDR="$ACCOUNT_ID"   # 클라우드는 호스트 IP 없음 → 진단대상IP=Account ID
@@ -1025,15 +1015,15 @@ check_operation(){
 # =============================================================
 # 7. 메인
 # =============================================================
-echo "${C_BLD}=====================================================${C_RESET}"
-echo "${C_BLD} SK쉴더스 AWS 클라우드 보안 자동 진단 (2024 가이드)${C_RESET}"
-echo "${C_BLD} 읽기전용 · 판단기준=PDF 양호/취약 원문 · EKS는 N/A${C_RESET}"
-echo "${C_BLD}=====================================================${C_RESET}"
+echo "================================================================"
+echo " SK쉴더스 AWS 클라우드 보안 자동 진단 (2024 가이드)"
+echo " 읽기전용 · 판단기준=PDF 양호/취약 원문 · EKS는 N/A"
+echo "================================================================"
 preflight
 NOW="$(date '+%Y-%m-%d %H:%M:%S %Z')"
-echo "${C_GRY}진단 주체 : ${WHOAMI}${C_RESET}"
-echo "${C_GRY}대상 계정 : ${ACCOUNT_ID}   리전 : ${REGION_EFF:-(미지정)}   진단대상 : ${TARGET_SYS}${C_RESET}"
-echo "${C_GRY}점검 시각 : ${NOW}   설정파일 : ${CONF}${C_RESET}"
+echo "진단 주체 : ${WHOAMI}"
+echo "대상 계정 : ${ACCOUNT_ID}   리전 : ${REGION_EFF:-(미지정)}   진단대상 : ${TARGET_SYS}"
+echo "점검 시각 : ${NOW}   설정파일 : ${CONF}"
 
 run_has(){ echo ",$CATS," | grep -q ",$1,"; }
 run_has 1 && check_account
@@ -1041,26 +1031,16 @@ run_has 2 && check_iam_policy
 run_has 3 && check_resource
 run_has 4 && check_operation
 
-# ---- 요약 ----
 TOTAL=$((PASS_CNT+FAIL_CNT+NA_CNT))
-echo
-echo "${C_BLD}===================== 진단 요약 =====================${C_RESET}"
-printf "  총 점검 : %d 항목\n" "$TOTAL"
-printf "  ${C_GRN}양호 : %d${C_RESET}   ${C_RED}취약 : %d${C_RESET}   ${C_GRY}N/A : %d${C_RESET}\n" "$PASS_CNT" "$FAIL_CNT" "$NA_CNT"
-if [ "$FAIL_CNT" -gt 0 ]; then
-  echo; echo "${C_RED}${C_BLD} 취약 항목 (조치 필요)${C_RESET}"
-  for i in "${!F_CODE[@]}"; do
-    [ "${F_RESULT[$i]}" = "취약" ] && printf "  ${C_RED}● [%s] %s (%s)${C_RESET}\n" "${F_CODE[$i]}" "${F_NAME[$i]}" "${F_SEV[$i]}"
-  done
-fi
 
-# ---- 산출물 저장 (CSV 10컬럼 + 보고서 TXT) ----
+# ---- 산출물 저장 (CSV 11컬럼 + 보고서 TXT) ----
+REPORT=""; RAW_CSV=""
 if [ -n "$OUTDIR" ]; then
   mkdir -p "$OUTDIR"
   TS="$(date +%Y%m%d_%H%M%S)"
   LABEL="${ACCOUNT_ID:-unknown}"
-  CSV="$OUTDIR/cloud_diag_raw_${LABEL}_${TS}.csv"
-  TXT="$OUTDIR/cloud_diag_report_${LABEL}_${TS}.txt"
+  RAW_CSV="$OUTDIR/cloud_diag_raw_${LABEL}_${TS}.csv"
+  REPORT="$OUTDIR/cloud_diag_report_${LABEL}_${TS}.txt"
 
   # CSV: UTF-8 BOM + 11컬럼 (점검내용↔진단대상 사이에 조치방법 삽입 — 대시보드 표시용)
   { printf '\xEF\xBB\xBF'
@@ -1073,7 +1053,7 @@ if [ -n "$OUTDIR" ]; then
         "$(csv_field "$TARGET_SYS")" "$(csv_field "$IP_ADDR")" "$(csv_field "${F_SEV[$i]}")" \
         "$(csv_field "${F_FILE[$i]}")"
     done
-  } > "$CSV"
+  } > "$RAW_CSV"
 
   # 보고서 TXT: 사전정보 헤더 + emit_screen 블록 (화면과 동일 양식)
   { echo "================ AWS 클라우드 보안 자동 진단 보고서 ================"
@@ -1088,11 +1068,16 @@ if [ -n "$OUTDIR" ]; then
     for i in "${!F_CODE[@]}"; do
       emit_screen "${F_CODE[$i]}" "${F_SEV[$i]}" "${F_NAME[$i]}" "${F_STD[$i]}" "${F_RESULT[$i]}" "${F_RAW[$i]}" "${F_FILE[$i]}"
     done
-  } > "$TXT"
-
-  echo; echo "${C_BLU}결과 저장:${C_RESET}"
-  echo "  CSV : $CSV"
-  echo "  TXT : $TXT"
+  } > "$REPORT"
 fi
+
+# ---- 종합 요약 (다른 진단 스크립트와 동일 양식) ----
+echo "================================================================"
+printf "[종합] 총 %d개 | 양호 %d | 취약 %d | N/A %d\n" "$TOTAL" "$PASS_CNT" "$FAIL_CNT" "$NA_CNT"
+if [ -n "$OUTDIR" ]; then
+  echo " 보고서(TXT)     : $REPORT"
+  echo " 로우데이터(CSV) : $RAW_CSV"
+fi
+echo "진단 스크립트 종료"
 
 [ "$FAIL_CNT" -gt 0 ] && exit 1 || exit 0
