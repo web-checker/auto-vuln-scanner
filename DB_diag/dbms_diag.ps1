@@ -24,7 +24,7 @@
 =====================================================================
 #>
 param(
-    [string]$ConfigFile = (Join-Path $PSScriptRoot 'dbms_diag_conf.ps1'),
+    [string]$ConfigFile = (Join-Path $PSScriptRoot 'dbms_diag.conf.ps1'),
     [string]$OutputDir
 )
 $ErrorActionPreference = 'SilentlyContinue'
