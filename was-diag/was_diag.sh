@@ -68,6 +68,7 @@ OS_NAME="$( ( . /etc/os-release 2>/dev/null && printf '%s' "$PRETTY_NAME" ) || t
 [ -z "$OS_NAME" ] && OS_NAME="$(uname -sr 2>/dev/null || echo unknown)"
 IP_ADDR="$(hostname -I 2>/dev/null | awk '{print $1}')"; [ -z "$IP_ADDR" ] && IP_ADDR="$HOSTN"
 TARGET_SYS="WAS(Tomcat)"   # 진단대상(자산 종류) — CSV/화면/보고서 공통 표기
+VERSION_META="$OS_NAME"    # 진단대상 시트 '버전정보' — diag_web25 가 Tomcat 버전을 잡으면 갱신
 
 mkdir -p "$OUTPUT_DIR" 2>/dev/null || { echo "[ERROR] 출력 디렉터리 생성 실패: $OUTPUT_DIR" >&2; exit 1; }
 RAW_CSV="${OUTPUT_DIR}/was_diag_raw_${LABEL}_${TS_FILE}.csv"
@@ -312,6 +313,10 @@ show_preinfo() {
   echo "[사전 정보]"
   echo "현재 OS      : ${OS_NAME}"
   echo "점검 환경 IP : ${IP_ADDR}"
+  if [ "${1:-}" = "full" ]; then   # 히스토리 전용(stdout 출력화면엔 미표기)
+    echo "HOSTNAME     : ${HOSTN}"
+    echo "버전 정보    : ${VERSION_META}"
+  fi
   echo "점검 분류    : WAS (Tomcat)    [전체 분류: WAS / DB / WEB / INFRA]"
   echo "점검 대상    : ${CATALINA_HOME}"
   echo "점검 시각    : ${TS}"
@@ -718,6 +723,7 @@ diag_web25() {
   if [ -z "$ver" ] && command -v unzip >/dev/null 2>&1 && [ -r "${CATALINA_HOME}/lib/catalina.jar" ]; then
     ver="$(unzip -p "${CATALINA_HOME}/lib/catalina.jar" org/apache/catalina/util/ServerInfo.properties 2>/dev/null | grep -i 'server.number' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"; fi
   if [ -z "$ver" ]; then record "WEB-25" "상" "$nm" "$R_NA" "${CATALINA_HOME}/bin/version.sh" "(버전 확인 불가)" "Tomcat 버전 확인 불가 — 수동 확인"; return; fi
+  VERSION_META="Tomcat ${ver}"   # 진단대상 시트 '버전정보'용(전역)
   local lowest; lowest="$(printf '%s\n%s\n' "$ver" "$MIN_TOMCAT_VERSION" | sort -V | head -1)"
   local raw="설치 버전=${ver}"$'\n'"기준 버전=${MIN_TOMCAT_VERSION} (※ EOL 여부는 수동 확인)"
   if [ "$lowest" = "$MIN_TOMCAT_VERSION" ]; then record "WEB-25" "상" "$nm" "$R_PASS" "ServerInfo (version.sh)" "$raw" "설치 버전 ${ver} >= 기준 ${MIN_TOMCAT_VERSION}"
@@ -774,7 +780,7 @@ TOTAL=$((CNT_PASS+CNT_VULN+CNT_NA))
 
 # ── 보고서 TXT ─────────────────────────────────────────────
 {
-  show_preinfo
+  show_preinfo full   # 히스토리엔 HOSTNAME/버전정보 포함(stdout 호출은 그대로 미표기)
   echo
   printf "[종합] 총 %d개 | 양호 %d | 취약 %d | N/A %d\n" "$TOTAL" "$CNT_PASS" "$CNT_VULN" "$CNT_NA"
   echo "================================================================"
@@ -794,17 +800,21 @@ csv_field() {
 }
 {
   printf '\xEF\xBB\xBF'   # UTF-8 BOM — Excel 한글 깨짐 방지
-  printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
+  # HOSTNAME/버전정보: 진단대상 시트용 메타 — 첫 데이터 행에만 채워 CSV 경량화(중복 0).
+  printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
     "$(csv_field 항목코드)" "$(csv_field 분류)" "$(csv_field 항목)" "$(csv_field 판단기준)" \
     "$(csv_field 결과)" "$(csv_field 점검내용)" "$(csv_field 조치방법)" "$(csv_field 진단대상)" \
-    "$(csv_field 진단대상IP)" "$(csv_field 중요도)" "$(csv_field 점검파일)"
+    "$(csv_field 진단대상IP)" "$(csv_field 중요도)" "$(csv_field 점검파일)" \
+    "$(csv_field HOSTNAME)" "$(csv_field 버전정보)"
   i=0
   while [ "$i" -lt "${#F_CODE[@]}" ]; do
-    printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
+    if [ "$i" -eq 0 ]; then _h="$HOSTN"; _v="$VERSION_META"; else _h=""; _v=""; fi
+    printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
       "$(csv_field "${F_CODE[$i]}")" "$(csv_field "${F_CAT[$i]}")" "$(csv_field "${F_NAME[$i]}")" \
       "$(csv_field "${F_STD[$i]}")" "$(csv_field "${F_RESULT[$i]}")" "$(csv_field "${F_RAW[$i]}")" \
       "$(csv_field "${F_FIX[$i]}")" "$(csv_field "$TARGET_SYS")" "$(csv_field "$IP_ADDR")" \
-      "$(csv_field "${F_SEV[$i]}")" "$(csv_field "${F_FILE[$i]}")"
+      "$(csv_field "${F_SEV[$i]}")" "$(csv_field "${F_FILE[$i]}")" \
+      "$(csv_field "$_h")" "$(csv_field "$_v")"
     i=$((i+1))
   done
 } > "$RAW_CSV"
