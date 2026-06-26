@@ -314,7 +314,7 @@ show_preinfo() {
   echo "현재 OS      : ${OS_NAME}"
   echo "점검 환경 IP : ${IP_ADDR}"
   if [ "${1:-}" = "full" ]; then   # 히스토리 전용(stdout 출력화면엔 미표기)
-    echo "HOSTNAME     : ${HOSTN}"
+    echo "호스트명     : ${HOSTN}"
     echo "버전 정보    : ${VERSION_META}"
   fi
   echo "점검 분류    : WAS (Tomcat)    [전체 분류: WAS / DB / WEB / INFRA]"
@@ -800,12 +800,12 @@ csv_field() {
 }
 {
   printf '\xEF\xBB\xBF'   # UTF-8 BOM — Excel 한글 깨짐 방지
-  # HOSTNAME/버전정보: 진단대상 시트용 메타 — 첫 데이터 행에만 채워 CSV 경량화(중복 0).
+  # 호스트명/버전정보: 진단대상 시트용 메타 — 첫 데이터 행에만 채워 CSV 경량화(중복 0).
   printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
     "$(csv_field 항목코드)" "$(csv_field 분류)" "$(csv_field 항목)" "$(csv_field 판단기준)" \
     "$(csv_field 결과)" "$(csv_field 점검내용)" "$(csv_field 조치방법)" "$(csv_field 진단대상)" \
     "$(csv_field 진단대상IP)" "$(csv_field 중요도)" "$(csv_field 점검파일)" \
-    "$(csv_field HOSTNAME)" "$(csv_field 버전정보)"
+    "$(csv_field 호스트명)" "$(csv_field 버전정보)"
   i=0
   while [ "$i" -lt "${#F_CODE[@]}" ]; do
     if [ "$i" -eq 0 ]; then _h="$HOSTN"; _v="$VERSION_META"; else _h=""; _v=""; fi

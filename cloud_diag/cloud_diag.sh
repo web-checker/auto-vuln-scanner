@@ -1042,16 +1042,19 @@ if [ -n "$OUTDIR" ]; then
   RAW_CSV="$OUTDIR/cloud_diag_raw_${LABEL}_${TS}.csv"
   HISTORY="$OUTDIR/cloud_diag_history_${LABEL}_${TS}.txt"
 
-  # CSV: UTF-8 BOM + 11컬럼 (점검내용↔진단대상 사이에 조치방법 삽입 — 대시보드 표시용)
+  # CSV: UTF-8 BOM + 13컬럼 (조치방법 삽입 + 진단대상 시트용 호스트명/버전정보 — 첫 행에만)
+  #  클라우드는 호스트/OS 없음 → 호스트명 공란, 버전정보는 'AWS'(진단대상=계정).
   { printf '\xEF\xBB\xBF'
-    echo "항목코드,분류,항목,판단기준,결과,점검내용,조치방법,진단대상,진단대상IP,중요도,점검파일"
+    echo "항목코드,분류,항목,판단기준,결과,점검내용,조치방법,진단대상,진단대상IP,중요도,점검파일,호스트명,버전정보"
+    _n=0
     for i in "${!F_CODE[@]}"; do
-      printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
+      if [ "$_n" -eq 0 ]; then _h=""; _v="AWS"; else _h=""; _v=""; fi; _n=$((_n+1))
+      printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
         "$(csv_field "${F_CODE[$i]}")" "$(csv_field "${F_CAT[$i]}")" "$(csv_field "${F_NAME[$i]}")" \
         "$(csv_field "${F_STD[$i]}")" "$(csv_field "${F_RESULT[$i]}")" "$(csv_field "${F_RAW[$i]}")" \
         "$(csv_field "${F_FIX[$i]}")" \
         "$(csv_field "$TARGET_SYS")" "$(csv_field "$IP_ADDR")" "$(csv_field "${F_SEV[$i]}")" \
-        "$(csv_field "${F_FILE[$i]}")"
+        "$(csv_field "${F_FILE[$i]}")" "$(csv_field "$_h")" "$(csv_field "$_v")"
     done
   } > "$RAW_CSV"
 
@@ -1075,8 +1078,8 @@ fi
 echo "================================================================"
 printf "[종합] 총 %d개 | 양호 %d | 취약 %d | N/A %d\n" "$TOTAL" "$PASS_CNT" "$FAIL_CNT" "$NA_CNT"
 if [ -n "$OUTDIR" ]; then
-  echo " 히스토리(TXT)   : $HISTORY"
   echo " 로우데이터(CSV) : $RAW_CSV"
+  echo " 히스토리(TXT)   : $HISTORY"
 fi
 echo "진단 스크립트 종료"
 

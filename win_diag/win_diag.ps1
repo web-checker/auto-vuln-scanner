@@ -1116,11 +1116,17 @@ foreach($r in $Results){ [void]$rep.Add( (Format-Block $r) -join "`n" ) }
 
 function CsvF($s){ '"' + (($s -replace '"','""') -replace "`r?`n",' | ') + '"' }
 $csv = New-Object System.Collections.ArrayList
-[void]$csv.Add( (@('항목코드','분류','항목','판단기준','결과','점검내용','조치방법','진단대상','진단대상IP','중요도','점검파일') | ForEach-Object { CsvF $_ }) -join ',' )
+# 호스트명/버전정보: 진단대상 시트용 메타 — 첫 데이터 행에만 채워 CSV 경량화(중복 0).
+[void]$csv.Add( (@('항목코드','분류','항목','판단기준','결과','점검내용','조치방법','진단대상','진단대상IP','중요도','점검파일','호스트명','버전정보') | ForEach-Object { CsvF $_ }) -join ',' )
+$VersionMeta = if ($OS) { $OS } else { $OSVer }   # Windows 버전
+$ri = 0
 foreach($r in $Results){
     $cat = if ($CatMap.ContainsKey($r.Cat)) { $CatMap[$r.Cat] } else { $r.Cat }
     $remed = if ($Remed.ContainsKey($r.Code)) { $Remed[$r.Code] } else { '' }
-    [void]$csv.Add( (@($r.Code,$cat,$r.Name,$r.Std,$r.Result,$r.Raw,$remed,$TargetSys,$IP,$r.Sev,$r.File) | ForEach-Object { CsvF $_ }) -join ',' )
+    $h = if ($ri -eq 0) { $HostN } else { '' }
+    $v = if ($ri -eq 0) { $VersionMeta } else { '' }
+    [void]$csv.Add( (@($r.Code,$cat,$r.Name,$r.Std,$r.Result,$r.Raw,$remed,$TargetSys,$IP,$r.Sev,$r.File,$h,$v) | ForEach-Object { CsvF $_ }) -join ',' )
+    $ri++
 }
 # CSV: Excel 한글 호환을 위해 BOM 포함 UTF-8로 저장
 [System.IO.File]::WriteAllText($RawCsv, ($csv -join "`r`n"), (New-Object System.Text.UTF8Encoding($true)))
