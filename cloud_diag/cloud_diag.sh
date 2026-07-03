@@ -211,13 +211,21 @@ FIX[4.15]='EKS 클러스터 비밀정보(Secret) 암호화 활성화'
 csv_field(){ local v; v="$(printf '%s' "$1" | sed 's/"/""/g' \
   | awk '{a[NR]=$0} END{for(i=1;i<=NR;i++) printf "%s%s",(i>1?" | ":""),a[i]}')"; printf '"%s"' "$v"; }
 
+# 점검 요약은 화면·TXT 모두 8줄까지만 출력(전문은 CSV에 전수).
+truncate8(){
+  printf '%s' "$1" | awk '
+    { ln[NR]=$0 }
+    END { n=NR; lim=(n>8?8:n)
+      for(i=1;i<=lim;i++) print ln[i]
+      if(n>8) printf "... (이하 %d줄 생략 — 상세는 로우데이터 CSV 참조)\n", n-8 }'
+}
 # emit_screen CODE SEV NAME STD RESULT RAW FILE  (분류/진단대상은 CSV에만)
 emit_screen(){
   printf '[%s (%s) %s]\n' "$1" "$2" "$3"
   printf '점검 결과    : %s\n' "$5"
   printf '점검 파일 명 : %s\n' "$7"
   printf '점검 요약    :\n'
-  if [ -n "$6" ]; then printf '%s\n' "$6" | sed 's/^/    /'; else printf '    (없음)\n'; fi
+  if [ -n "$6" ]; then truncate8 "$6" | sed 's/^/    /'; else printf '    (없음)\n'; fi
   printf '판단 기준    :\n'; printf '%s\n' "$4" | sed 's/^/    /'
   printf -- '----------------------------------------------------------------\n'
 }
