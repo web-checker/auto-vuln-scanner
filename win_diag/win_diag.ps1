@@ -272,7 +272,7 @@ $Remed['W-64']='Windows 방화벽을 “사용”으로 설정'
 # 출력 헬퍼 + 분류 표기(PDF 공백) 매핑 + 진단대상
 $CatMap=@{'계정관리'='계정 관리';'서비스관리'='서비스 관리';'패치관리'='패치 관리';'로그관리'='로그 관리';'보안관리'='보안 관리'}
 $TargetSys='Windows Server'
-function Truncate8($t){ if(-not $t){return '(없음)'}; $l=$t -split "`r?`n"; if($l.Count -le 8){return ($l -join "`n")}; ($l[0..7] -join "`n")+"`n... (이하 $($l.Count-8)줄 생략 — 상세는 로우데이터 CSV 참조)" }
+function FmtRaw($t){ if(-not $t){return '(없음)'}; ($t -split "`r?`n") -join "`n" }   # 점검 요약 전문(절단 없음)
 function StripParen($r){ if($r -and ($r -notmatch "`n") -and ($r -match '^\((.*)\)$')){return $Matches[1]}; $r }
 function StdBlock($c){ $s=$Std[$c]; if($s){"양호 : $($s.P)`n취약 : $($s.V)"}else{'(기준 미정의)'} }
 
@@ -313,12 +313,12 @@ function Add-Result {
         Code=$Code; Sev=$m.Sev; Name=$m.Name; Cat=$m.Cat
         File=$File; Raw=$Raw; Result=$Result; Summary=$Summary; Std=$std
     })
-    # 화면 블록: 점검 결과 / 점검 파일 명 / 점검 요약(8줄) / 판단 기준
+    # 화면 블록: 점검 결과 / 점검 파일 명 / 점검 요약(전문) / 판단 기준
     Write-Host ("[{0} ({1}) {2}]" -f $Code,$m.Sev,$m.Name)
     Write-Host ("점검 결과    : {0}" -f $Result)
     Write-Host ("점검 파일 명 : {0}" -f $File)
     Write-Host  "점검 요약    :"
-    (Truncate8 $Raw) -split "`n" | ForEach-Object { Write-Host ("    " + $_) }
+    (FmtRaw $Raw) -split "`n" | ForEach-Object { Write-Host ("    " + $_) }
     Write-Host  "판단 기준    :"
     $std -split "`n" | ForEach-Object { Write-Host ("    " + $_) }
     Write-Host  "----------------------------------------------------------------"
@@ -710,7 +710,7 @@ if ($idleInt -gt 0) { $idleMin = [math]::Round($idleInt/60000)
     else { Add-Result 'W-36' $VULN 'Terminal Services MaxIdleTime' "값=${idleInt}ms (${idleMin}분)" "원격터미널 타임아웃이 기준(${[math]::Round($Conf.RDPIdleTimeoutMaxMs/60000)}분) 초과" }
 } else { Add-Result 'W-36' $VULN 'Terminal Services MaxIdleTime' "값=$idle (0=미설정)" "원격터미널 타임아웃 미설정 또는 0" }
 
-# W-37 예약 작업 의심 명령 — 활성 작업을 '전부' 나열(화면은 8줄까지, CSV에 전수). 의심 여부는 수동/AI 확인.
+# W-37 예약 작업 의심 명령 — 활성 작업을 '전부' 나열(화면·CSV 전수). 의심 여부는 수동/AI 확인.
 $actTasks = @(Get-ScheduledTask -ErrorAction SilentlyContinue | Where-Object { $_.State -ne 'Disabled' })
 $taskLines = $actTasks | ForEach-Object {
     $act = ($_.Actions | ForEach-Object { ($_.Execute, $_.Arguments | Where-Object { $_ }) -join ' ' }) -join ' ; '
@@ -738,7 +738,7 @@ $auditRaw = (auditpol /get /category:* 2>$null)
 $auditMatches = $auditRaw | Select-String -Pattern 'Success|Failure|성공|실패'
 $auditEnabled = @()
 foreach($m in $auditMatches){ if ($m -notmatch '설정 안 함|No Auditing') { $auditEnabled += $m } }
-# 활성 감사 항목(하위범주: 설정값)을 전수 나열 — 화면은 8줄, CSV에 전체.
+# 활성 감사 항목(하위범주: 설정값)을 전수 나열 — 화면·CSV 전체.
 $auditLines = $auditEnabled | ForEach-Object { ($_.ToString().Trim() -replace '\s{2,}',' : ') }
 $raw40 = "감사 활성 항목 $($auditEnabled.Count)개 (auditpol /get /category:*):`n" + ($auditLines -join "`n")
 if ($auditEnabled.Count -gt 0) { Add-Result 'W-40' $PASS '감사 정책(auditpol)' $raw40 "시스템 감사(로깅) 정책 설정됨 — 활성 항목 $($auditEnabled.Count)개" }
@@ -1026,7 +1026,7 @@ else { Add-Result 'W-57' $VULN 'Policies\System\LegalNotice' "Caption='$lnc' / T
 
 # W-58 사용자별 홈 디렉터리 권한
 $udir = Get-ChildItem 'C:\Users' -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -notin @('Public','Default','Default User','All Users') }
-# 각 사용자 홈 디렉터리를 전수 나열 + Everyone 권한 유무 표기(화면 8줄/CSV 전체)
+# 각 사용자 홈 디렉터리를 전수 나열 + Everyone 권한 유무 표기(화면·CSV 전체)
 $badHome=@(); $homeLines=@()
 foreach($d in $udir){
     $hasEv = (Get-Acl $d.FullName -ErrorAction SilentlyContinue).Access | Where-Object { $_.IdentityReference -match 'Everyone' }
@@ -1054,7 +1054,7 @@ if ($sysDrive -eq 'NTFS') { Add-Result 'W-61' $PASS '파일시스템' "$env:Syst
 elseif (-not $sysDrive) { Add-Result 'W-61' $NA '파일시스템' "$env:SystemDrive 파일시스템 확인 불가" "파일시스템 확인 불가 — 수동 확인" }
 else { Add-Result 'W-61' $VULN '파일시스템' "$env:SystemDrive = $sysDrive" "시스템 드라이브가 NTFS 아님(권한 관리 불가)" }
 
-# W-62 시작프로그램 목록 분석 — Run/RunOnce 항목(이름=실행명령)을 전수 나열(화면 8줄/CSV 전체). 의심 항목 수동/AI 확인.
+# W-62 시작프로그램 목록 분석 — Run/RunOnce 항목(이름=실행명령)을 전수 나열(화면·CSV 전체). 의심 항목 수동/AI 확인.
 $runKeys = @(
     'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run',
     'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce',
@@ -1099,7 +1099,7 @@ function Format-Block($r){
     "점검 결과    : {0}" -f $r.Result
     "점검 파일 명 : {0}" -f $r.File
     "점검 요약    :"
-    (Truncate8 $r.Raw) -split "`n" | ForEach-Object { "    $_" }
+    (FmtRaw $r.Raw) -split "`n" | ForEach-Object { "    $_" }
     "판단 기준    :"
     $r.Std -split "`n" | ForEach-Object { "    $_" }
     "----------------------------------------------------------------"

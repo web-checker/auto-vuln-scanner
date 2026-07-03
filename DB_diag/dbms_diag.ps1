@@ -271,7 +271,7 @@ $Fix['D-26']='DBMS에 대한 감사 로그 저장 정책 수립, 적용'
 # 출력 헬퍼 + 분류 표기(PDF 공백) 매핑 + 진단대상
 $CatMap=@{'계정관리'='계정 관리';'접근관리'='접근 관리';'옵션관리'='옵션 관리';'패치관리'='패치 관리'}
 $TargetSys='DBMS(Oracle)'
-function Truncate8($t){ if(-not $t){return '(없음)'}; $l=$t -split "`r?`n"; if($l.Count -le 8){return ($l -join "`n")}; ($l[0..7] -join "`n")+"`n... (이하 $($l.Count-8)줄 생략 — 상세는 로우데이터 CSV 참조)" }
+function FmtRaw($t){ if(-not $t){return '(없음)'}; ($t -split "`r?`n") -join "`n" }   # 점검 요약 전문(절단 없음)
 function StripParen($r){ if($r -and ($r -notmatch "`n") -and ($r -match '^\((.*)\)$')){return $Matches[1]}; $r }
 function StdBlock($c){ $s=$Std[$c]; if($s){"양호 : $($s.P)`n취약 : $($s.V)"}else{'(기준 미정의)'} }
 
@@ -320,7 +320,7 @@ function Add-Result {
     Write-Host ("점검 결과    : {0}" -f $Result) -ForegroundColor $clr
     Write-Host ("점검 파일 명 : {0}" -f $File)
     Write-Host  "점검 요약    :"
-    (Truncate8 $Raw) -split "`n" | ForEach-Object { Write-Host ("    " + $_) }
+    (FmtRaw $Raw) -split "`n" | ForEach-Object { Write-Host ("    " + $_) }
     Write-Host  "판단 기준    :"
     $std -split "`n" | ForEach-Object { Write-Host ("    " + $_) }
     Write-Host  "----------------------------------------------------------------"
@@ -790,7 +790,7 @@ function Format-Block($r){
     "점검 결과    : {0}" -f $r.Result
     "점검 파일 명 : {0}" -f $r.File
     "점검 요약    :"
-    (Truncate8 $r.Raw) -split "`n" | ForEach-Object { "    $_" }
+    (FmtRaw $r.Raw) -split "`n" | ForEach-Object { "    $_" }
     "판단 기준    :"
     $r.Std -split "`n" | ForEach-Object { "    $_" }
     "----------------------------------------------------------------"
