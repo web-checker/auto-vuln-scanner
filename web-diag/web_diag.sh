@@ -281,25 +281,14 @@ acfg_ctx() {
     }'
 }
 
-# 점검내용을 화면용으로 최대 8줄까지만 (나머지는 생략 — 상세는 CSV)
-truncate8() {
-  printf '%s' "$1" | awk '
-    { ln[NR]=$0 }
-    END {
-      n=NR; lim=(n>8?8:n)
-      for (i=1;i<=lim;i++) print ln[i]
-      if (n>8) printf "... (이하 %d줄 생략 — 상세는 로우데이터 CSV 참조)\n", n-8
-    }'
-}
-
-# 화면/보고서(TXT) 출력 블록 — 점검요약은 점검내용을 8줄까지만
+# 화면/보고서(TXT) 출력 블록 — 점검요약은 점검내용 전문(절단 없음)
 # emit_screen CODE SEV NAME CAT STD RESULT RAW FILE  ($4 CAT 미사용: 화면 제외, CSV에만)
 emit_screen() {
   printf '[%s (%s) %s]\n' "$1" "$2" "$3"
   printf '점검 결과    : %s\n' "$6"
   printf '점검 파일 명 : %s\n' "$8"
   printf '점검 요약    :\n'
-  if [ -n "$7" ]; then truncate8 "$7" | sed 's/^/    /'; else printf '    (없음)\n'; fi
+  if [ -n "$7" ]; then printf '%s\n' "$7" | sed 's/^/    /'; else printf '    (없음)\n'; fi
   printf '판단 기준    :\n'; printf '%s\n' "$5" | sed 's/^/    /'
   printf -- '----------------------------------------------------------------\n'
 }
